@@ -1,5 +1,7 @@
 # Syncthing Hide Console
-[[doc/README_CN.md|简体中文]]
+
+[[./doc/README_CN.md|简体中文]]
+
 **Syncthing Hide Console** is a lightweight utility designed specifically for Windows. Its purpose is to hide the console window of **Syncthing** (`syncthing.exe`) and run it as a system tray icon.
 
 With this tool, you can run Syncthing silently in the background. You can easily show, hide, or exit the application via the tray icon in the bottom-right corner, keeping your desktop clean and clutter-free.
