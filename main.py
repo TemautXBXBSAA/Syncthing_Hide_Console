@@ -118,6 +118,8 @@ def main():
     logger.info(f"Start {EXE_FILE_NAME}")
     logger.info(f"Part of title: {PART_OF_TITLE}")
 
+    start_time = time.time()
+
     while True:
         logger.info("Trying to find process...")
         hwnd_list = enum_hwnd()
@@ -129,6 +131,9 @@ def main():
                 process_dict[name] = hwnd
         if len(process_dict) != 0:
             break
+        if time.time() - start_time > 20:
+            logger.error("Process not found.")
+            raise Exception("Process not found.")
         time.sleep(0.5)
 
     logger.warning(f"These Process will be HIDDEN:\n    {process_dict}")
