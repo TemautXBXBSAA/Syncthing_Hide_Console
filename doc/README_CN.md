@@ -124,7 +124,7 @@ pyinstaller --noconsole --onefile main.py
 
 ## 📄 许可证
 
-本项目代码基于 MIT 风格开源（具体请参考您项目的实际许可证）。Syncthing 本身遵循 MPLv2 许可证。
+本项目代码基于 MIT 开源。
 
 ---
 
