@@ -126,7 +126,7 @@ If the default settings do not meet your needs, you can edit `config.json`:
 
 ## 📄 License
 
-The code for this project is open source under an MIT-style license (please refer to your project's actual license for specifics). Syncthing itself follows the MPLv2 license.
+The code for this project is open source under an MIT license.
 
 ---
 
