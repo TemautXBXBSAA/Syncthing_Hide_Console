@@ -11,10 +11,11 @@ import os
 import json
 import zlib
 import time
-import signal
 import base64
 import ctypes
 import logging
+import win32gui
+import win32con
 import datetime
 import threading
 import subprocess
@@ -50,8 +51,9 @@ class SystemTrayApp:
     def quit(self):
         self.on_exit()
         self.running = False
-        logger.warning("Exit")
-        self.icon.stop()
+        logger.info("Exit")
+        if self.icon:
+            self.icon.stop()
     
     def run_icon(self):
         logger.info("Setup icon.")
@@ -65,7 +67,7 @@ class SystemTrayApp:
         logger.info(f"Start icon thread: {self.icon_thread}")
         return True
 
-def hide_window(hwnd):
+def hide_window(hwnd) -> bool:
     try:
         logger.info(f"Hide {hwnd}")
         user32.ShowWindow(hwnd, SW_HIDE)
@@ -74,7 +76,7 @@ def hide_window(hwnd):
         logger.error(e)
         raise e
 
-def show_window(hwnd):
+def show_window(hwnd) -> bool:
     try:
         logger.info(f"Show {hwnd}")
         user32.ShowWindow(hwnd, SW_SHOW)
@@ -83,7 +85,7 @@ def show_window(hwnd):
         logger.error(e)
         raise e
 
-def enum_hwnd():
+def enum_hwnd() -> list:
     windows = []
     def callback(hwnd, lParam):
         windows.append(hwnd)
@@ -96,24 +98,27 @@ def enum_hwnd():
     else:
         return []
 
-def hwnd_get_name(hwnd):
+def hwnd_get_name(hwnd) -> str:
     length = ctypes.windll.user32.GetWindowTextLengthW(hwnd) + 1
     buffer = ctypes.create_unicode_buffer(length)
     ctypes.windll.user32.GetWindowTextW(hwnd, buffer, length)
     return buffer.value
 
-def run_process(file_name:str):
+def run_process(file_name:str) -> subprocess.Popen:
     try:
         return subprocess.Popen([file_name], creationflags=subprocess.CREATE_NEW_CONSOLE)
     except Exception as e:
         logger.error(e)
         raise e
-def hwnd_get_pid(hwnd:int):
+def hwnd_get_pid(hwnd:int) -> int:
     pid = ctypes.c_int(0)
     user32.GetWindowThreadProcessId(hwnd,ctypes.byref(pid))
     return pid.value
 
 def main():
+    global EXE_FILE_NAME, PART_OF_TITLE, ICON
+    # Standardization
+    EXE_FILE_NAME = os.path.abspath(EXE_FILE_NAME)
     process = run_process(EXE_FILE_NAME)
     logger.info(f"Start {EXE_FILE_NAME}")
     logger.info(f"Part of title: {PART_OF_TITLE}")
@@ -129,8 +134,20 @@ def main():
             name = hwnd_get_name(hwnd)
             if PART_OF_TITLE in name:
                 process_dict[name] = hwnd
+            if EXE_FILE_NAME == name: 
+                # If accuracy
+                # At least on my computer, the title of this program is its running directory.
+                # This piece of code also prevents multi-process matching, which is harmless even if there is no exact title.
+                process_dict.clear()
+                process_dict[name] = hwnd
+                logger.info(f"Process found accurately: {name}")
+                break
         if len(process_dict) != 0:
             break
+        if len(process_dict) > 1:
+            logger.warning(f"Multiple processes found: {process_dict}")
+            logger.warning("!!! This program will hide all processes !!!")
+
         if time.time() - start_time > 20:
             logger.error("Process not found.")
             raise Exception("Process not found.")
@@ -150,32 +167,37 @@ def main():
             logger.info(f"Show: {name}")
             show_window(hwnd)
     def on_exit():
-        for name,hwnd in process_dict.items():
-            logger.info(f"Show: {name}")
-            show_window(hwnd)
+        logger.info("Exiting application...")
+        try:
+            for name, hwnd in process_dict.items():
+                show_window(hwnd)
+                logger.info(f"Terminating procress: {name}:{hwnd}")
+                code = win32gui.SendMessage(hwnd, win32con.WM_CLOSE)
+                logger.info(f"{hwnd} Return code: {code}")
+                logger.info("Process terminated gracefully.")
+        except Exception as e:
+            logger.error(f"Error showing windows on exit: {e}")
+        
+        time.sleep(1)
+        if (process.poll() is None) and FORCE_EXIT:
+            logger.warning(f"Process {process.pid} is still running. Force killing...")
+            logger.critical("Process will kill ALL the Console Processes. This may cause problems.")
             try:
-                os.kill(hwnd_get_pid(hwnd),signal.SIGTERM)
-                try:
-                    process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    logger.warning(f"Unable to wait for process to exit: {name}.")
-                    process.kill()
-                except Exception as e:
-                    logger.error(e)
-            except Exception as e:
-                logger.error(e)
-                process.kill()
-            try:
-                os.system(f"taskkill /F /PID {hwnd_get_pid(hwnd)}")
-            except Exception as e:
-                logger.error(e)
+                subprocess.call(["taskkill", "/F", "/PID", str(process.pid)])
+            except Exception as ex:
+                logger.error(f"Failed to taskkill: {ex}")
+        else:
+            logger.info(f"Pass Force Exit. Exiting...")
 
-    hide_all()
     app = SystemTrayApp()
     app.start()
     app.on_exit = on_exit
     app.click_show = show_all
     app.click_hide = hide_all
+
+    time.sleep(0.5) # Wait for the process to start
+    hide_all()
+    
 
     try:
         while app.running:
@@ -188,8 +210,9 @@ def main():
 ### Init Constant
 SW_HIDE = 0
 SW_SHOW = 5
+FORCE_EXIT = False
 EXE_FILE_NAME = r".\syncthing.exe"
-PART_OF_TITLE = "" #if not given, use "os.path.basename(EXE_FILE_NAME)"
+PART_OF_TITLE = "" #if not given, the program will use "os.path.basename(EXE_FILE_NAME)"
 
 ### Logger
 logger = logging.getLogger(__name__)
@@ -198,24 +221,28 @@ formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(messag
 ch = logging.StreamHandler()
 ch.setFormatter(formatter)
 logger.addHandler(ch)
-fh = logging.FileHandler("latest_log.log", mode='w', encoding='utf-8')
+fh = logging.FileHandler("log.log", mode='w', encoding='utf-8')
 fh.setFormatter(formatter)
 logger.addHandler(fh)
 
 ### Save&load config
 if os.path.exists("config.json"):
     logger.info("Loading 'config.json'")
-    CONFIG = json.load(open("config.json",encoding="utf-8"))
+    with open("config.json",encoding="utf-8") as f:
+        CONFIG = json.load(f)
     EXE_FILE_NAME = CONFIG.get("EXE_FILE_NAME", EXE_FILE_NAME)
     PART_OF_TITLE = CONFIG.get("PART_OF_TITLE", PART_OF_TITLE)
+    FORCE_EXIT = CONFIG.get("FORCE_EXIT", FORCE_EXIT)
     logger.info(f"EXE_FILE_NAME: {EXE_FILE_NAME}")
 else:
     logger.info("Creating 'config.json'")
     CONFIG = {
         "EXE_FILE_NAME": EXE_FILE_NAME,
-        "PART_OF_TITLE": PART_OF_TITLE
+        "PART_OF_TITLE": PART_OF_TITLE,
+        "FORCE_EXIT": False,
     }
-    json.dump(CONFIG, open("config.json", "w",encoding="utf-8"),indent=4)
+    with open("config.json", "w",encoding="utf-8") as f:
+        json.dump(CONFIG, f,indent=4)
 
 ### Other
 PART_OF_TITLE = os.path.basename(EXE_FILE_NAME) if not PART_OF_TITLE else PART_OF_TITLE
