@@ -1,131 +1,107 @@
 # Syncthing Hide Console
 
-**Syncthing Hide Console** 是一个专为 Windows 设计的轻量级实用工具，旨在将 **Syncthing** (`syncthing.exe`) 的控制台窗口隐藏，并将其转换为系统托盘（System Tray）图标运行。
+[English](./README.md)
 
-通过本工具，您可以在后台静默运行 Syncthing，并通过右下角的托盘图标轻松控制其显示、隐藏或退出，保持桌面整洁。
+**Syncthing Hide Console** 是一款专为 Windows 设计的轻量级工具。其目的是隐藏 **Syncthing**（`syncthing.exe`）的控制台窗口，并通过系统托盘图标进行管理。
 
-理论上，任何控制台窗口都可以通过本工具进行隐藏，但请务必注意，本工具仅适用于 Windows 系统。
+使用此工具，您可以在后台静默运行 Syncthing。您可以通过右下角的托盘图标轻松显示、隐藏或退出应用程序，保持桌面整洁无杂乱。
+
+> **注意：** 虽然本工具是为 Syncthing 设计的，但理论上可以通过匹配窗口标题来隐藏任何 Windows 控制台应用程序。
 
 ## ⚠️ 前置要求
 
-- **操作系统**: Windows (因为使用了 `ctypes.windll` 和 Windows API)
-- **Python 环境**: Python 3.6+
-- **依赖库**: 见 `requirements.txt`
+- **操作系统**：Windows 10/11（通过 `pywin32` 依赖 Win32 API）
+- **Python 环境**：Python 3.6+
+- **依赖项**：参见 `requirements.txt`
 
 ## 🚀 快速开始
 
 ### 1. 安装依赖
 
-在项目目录下，首先安装所需的 Python 库：
-
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. 准备 Syncthing
+### 2. 配置路径
 
-确保 `syncthing.exe` 位于本脚本同一目录下，或者修改生成的 `config.json` 中的 `EXE_FILE_NAME` 路径指向您的 Syncthing 可执行文件。
+确保 `syncthing.exe` 与此脚本位于同一目录下。
+*如果您的 Syncthing 可执行文件位于其他位置，可以在首次运行后生成的 `config.json` 文件中修改路径。*
 
 ### 3. 运行程序
-
-直接运行主脚本：
 
 ```bash
 python main.py
 ```
 
-首次运行时，程序会自动生成 `config.json` 配置文件和 `latest_log.log` 日志文件。
+首次运行时，程序会自动生成 `config.json` 配置文件和 `log.log` 日志文件。
 
-## ✨ 功能特点
+## ✨ 功能特性
 
-- **自动隐藏**: 启动后自动查找 Syncthing 进程窗口并立即隐藏。
-- **系统托盘集成**: 在任务栏右侧显示图标，提供右键菜单。
-- **灵活控制**:
-  - **Show**: 临时显示 Syncthing 控制台窗口。
-  - **Hide**: 再次隐藏窗口。
-  - **Exit**: 优雅地关闭 Syncthing 进程并退出本工具。
-- **配置持久化**: 支持通过 `config.json` 自定义 Syncthing 路径和窗口标题匹配关键字。
-- **日志记录**: 详细记录运行状态到 `latest_log.log`，错误信息记录到 `error.log`。
+- **自动隐藏**：启动时自动检测目标进程窗口并立即隐藏。
+- **系统集成托盘**：在任务栏通知区域显示图标，并提供上下文菜单。
+- **灵活控制**：
+  - **Show**：临时显示隐藏的控制台窗口。
+  - **Hide**：再次隐藏窗口。
+  - **Exit**：优雅地终止目标进程并关闭工具。
+- **智能进程匹配**：同时使用窗口标题关键字和精确的可执行文件路径匹配，防止意外隐藏无关进程。
+- **优雅关闭**：尝试通过 `WM_CLOSE` 优雅地关闭目标应用程序，如有必要再强制终止。
+- **持久化配置**：支持通过 `config.json` 自定义可执行文件路径、标题匹配关键字和强制退出行为。
 
 ## ⚖️ 优缺点
 
 ### ✅ 优点
 
-1.  **界面整洁**: 无需重新安装，彻底消除 Syncthing 默认的控制台窗口，避免干扰工作区。
-2.  **操作便捷**: 无需打开浏览器访问 GUI 即可快速显示/隐藏控制台或退出程序。
-3.  **零侵入性**: 不需要修改 Syncthing 的核心二进制文件，仅作为外部包装器（Wrapper）运行。
-4.  **资源占用极低**: 仅占用极少的内存和 CPU 来维持托盘图标和窗口句柄监控。
-5.  **易于配置**: 支持自定义 Syncthing 路径，方便非标准安装用户。
+1. **界面简洁**：无需修改原始二进制文件即可消除持续存在的控制台窗口。
+2. **非侵入式**：作为外部包装器运行；不会向 Syncthing 注入代码。
+3. **安全终止**：优先使用优雅关闭信号，以最小化数据损坏风险。
+4. **资源占用极少**：轻量级，消耗极少的内存和 CPU。
 
 ### ❌ 缺点
 
-1.  **平台限制**: 仅支持 **Windows** 系统（依赖 Win32 API），不支持 macOS 或 Linux。
-2.  **依赖关系**: 需要安装 Python 环境及第三方库 (`pystray`, `Pillow`)，不如单文件 exe 方便（除非编译）。
-3.  **标题匹配机制**: 程序通过窗口标题（`PART_OF_TITLE`）来定位 Syncthing 窗口。如果 Syncthing 版本更新导致窗口标题格式大幅变化，可能需要手动调整配置文件。
-4.  **进程生命周期**: 如果本工具意外崩溃，Syncthing 窗口可能会重新显示（虽然进程仍在运行），需要手动处理或通过脚本重启。
+1. **仅限 Windows**：由于依赖 Win32 API，不兼容 macOS 或 Linux。
+2. **依赖标题**：依赖窗口标题进行检测。如果目标应用程序在更新中显著更改其窗口标题格式，可能需要手动调整配置。
+3. **进程状态**：如果此工具意外崩溃，隐藏的窗口可能会重新出现，但底层进程将继续运行。
 
-## 🛠️ 编译为独立可执行文件 (.exe)
-
-如果您希望在没有安装 Python 环境的电脑上使用，或者想要**彻底隐藏运行时的控制台窗口**，建议使用 `PyInstaller` 进行编译。
-
-### 1. 安装 PyInstaller
-
-```bash
-pip install pyinstaller
-```
-
-### 2. 编译命令 (关键步骤)
-
-为了**隐藏控制台**，必须使用 `--noconsole` (或 `--windowed`) 参数。同时，为了确保托盘图标和依赖库正常工作，建议加上 `--onefile`。
-
-```bash
-pyinstaller --noconsole --onefile main.py
-```
-
-**参数说明：**
-- `--noconsole`: **关键参数**。告诉 PyInstaller 不要弹出黑色的命令行窗口，程序将在后台运行，仅显示系统托盘图标。
-- `--onefile`: 将所有依赖打包成一个单独的 `.exe` 文件，方便分发。
-- `--name`: 生成的可执行文件名。
-
-### 3. 获取输出
-
-编译完成后，在 `dist` 文件夹下找到 `main.exe`。您重命名此文件，可以将此文件和 `syncthing.exe` 放在同一目录下直接运行。
-
-## 📂 文件结构说明
+## 📂 文件结构
 
 ```text
 .
-├── main.exe              # 主程序脚本
-├── requirements.txt     # Python 依赖列表
-├── config.json          # (自动生成) 配置文件，可编辑 EXE 路径
-├── latest_log.log       # (自动生成) 运行日志
-├── error.log            # (自动生成) 错误日志
-└── syncthing.exe        # (需自备) Syncthing 主程序
+├── main.py              # 主源代码
+├── requirements.txt     # Python 依赖项
+├── config.json          # （自动生成）用户配置
+├── log.log              # （自动生成）运行时日志
+├── error.log            # （自动生成）错误日志（如果有）
+└── syncthing.exe        # （用户提供）目标应用程序
 ```
 
-## 🔧 配置说明 (`config.json`)
+## 🔧 配置（`config.json`）
 
-如果默认设置不满足需求，可以编辑 `config.json`：
+您可以编辑 `config.json` 来自定义行为：
 
 ```json
 {
     "EXE_FILE_NAME": ".\\syncthing.exe",
-    "PART_OF_TITLE": ""
+    "PART_OF_TITLE": "",
+    "FORCE_EXIT": false
 }
 ```
 
-- `EXE_FILE_NAME`: Syncthing 可执行文件的相对或绝对路径。
-- `PART_OF_TITLE`: 用于匹配窗口标题的关键字。留空则默认使用 `EXE_FILE_NAME` 的文件名（例如 `syncthing.exe`）进行匹配。如果您的 Syncthing 窗口标题被自定义过，请在此填写部分标题文字。
+| 键 | 描述 |
+| :--- | :--- |
+| `EXE_FILE_NAME` | 目标可执行文件的相对或绝对路径。 |
+| `PART_OF_TITLE` | 用于匹配窗口标题的关键字。如果为空，则默认为 `EXE_FILE_NAME` 的基本名称（例如 `syncthing.exe`）。如果窗口标题与文件名不同，请使用此项。 |
+| `FORCE_EXIT` | 如果为 `true`，工具将在超时后无法优雅关闭时强制杀死进程。默认为 `false`。 |
 
 ## 📝 注意事项
 
-- 本工具内置了 Syncthing 的图标（以 Base85 编码形式存储在代码中），无需额外下载图标文件。
-- 退出程序时，本工具会尝试终止 Syncthing 进程，可能会导致出现未同步的数据暂时锁定。
+- **图标嵌入**：托盘图标直接嵌入在源代码中（Base85 编码的 PNG），因此不需要外部图像文件。
+- **日志记录**：详细的运行时日志保存到 `log.log`。如果应用程序无法启动，请检查 `error.log`。
+- **数据安全**：退出时，工具会尝试向目标应用程序发送关闭信号。如果启用了 `FORCE_EXIT`，请在强制退出前确保您的数据已同步。
 
 ## 📄 许可证
 
-本项目代码基于 MIT 开源。
+本项目根据 [MIT 许可证](LICENSE) 开源。
 
 ---
 
-*Made with ❤️ for a cleaner desktop.*
+*用 ❤️ 打造更整洁的桌面。*
