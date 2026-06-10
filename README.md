@@ -1,16 +1,17 @@
+
 # Syncthing Hide Console
 
 [简体中文](./doc/README_CN.md)
 
-**Syncthing Hide Console** is a lightweight utility designed specifically for Windows. Its purpose is to hide the console window of **Syncthing** (`syncthing.exe`) and run it as a system tray icon.
+**Syncthing Hide Console** is a lightweight utility designed specifically for Windows. Its purpose is to hide the console window of **Syncthing** (`syncthing.exe`) and manage it via a system tray icon.
 
 With this tool, you can run Syncthing silently in the background. You can easily show, hide, or exit the application via the tray icon in the bottom-right corner, keeping your desktop clean and clutter-free.
 
-In theory, any console window can be hidden using this tool, but please note that this tool is only applicable to Windows systems.
+> **Note:** While designed for Syncthing, this tool can theoretically hide any Windows console application by matching its window title.
 
 ## ⚠️ Prerequisites
 
-- **Operating System**: Windows (relies on `ctypes.windll` and Windows API)
+- **Operating System**: Windows 10/11 (Relies on Win32 API via `pywin32`)
 - **Python Environment**: Python 3.6+
 - **Dependencies**: See `requirements.txt`
 
@@ -18,115 +19,89 @@ In theory, any console window can be hidden using this tool, but please note tha
 
 ### 1. Install Dependencies
 
-In the project directory, install the required Python libraries:
-
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Prepare Syncthing
+### 2. Configure Path
 
-Ensure `syncthing.exe` is located in the same directory as this script. Alternatively, modify the `EXE_FILE_NAME` path in the generated `config.json` to point to your Syncthing executable.
+Ensure `syncthing.exe` is located in the same directory as this script. 
+*If your Syncthing executable is located elsewhere, you can modify the path in the `config.json` file generated after the first run.*
 
 ### 3. Run the Program
-
-Execute the main script directly:
 
 ```bash
 python main.py
 ```
 
-On the first run, the program will automatically generate a `config.json` configuration file and a `latest_log.log` log file.
+On the first run, the program will automatically generate a `config.json` configuration file and a `log.log` file.
 
 ## ✨ Features
 
-- **Auto-Hide**: Automatically detects the Syncthing process window upon startup and hides it immediately.
-- **System Tray Integration**: Displays an icon in the taskbar notification area with a right-click context menu.
+- **Auto-Hide**: Automatically detects the target process window upon startup and hides it immediately.
+- **System Tray Integration**: Displays an icon in the taskbar notification area with a context menu.
 - **Flexible Control**:
-  - **Show**: Temporarily display the Syncthing console window.
+  - **Show**: Temporarily display the hidden console window.
   - **Hide**: Hide the window again.
-  - **Exit**: Gracefully terminate the Syncthing process and close this utility.
-- **Persistent Configuration**: Supports customizing the Syncthing path and window title matching keywords via `config.json`.
-- **Logging**: Detailed runtime status is recorded in `latest_log.log`, while error messages are saved to `error.log`.
+  - **Exit**: Gracefully terminates the target process and closes the utility.
+- **Smart Process Matching**: Uses both window title keywords and exact executable path matching to prevent accidental hiding of unrelated processes.
+- **Graceful Shutdown**: Attempts to close the target application gracefully via `WM_CLOSE` before forcing termination if necessary.
+- **Persistent Configuration**: Supports customizing the executable path, title matching keywords, and force-exit behavior via `config.json`.
 
 ## ⚖️ Pros & Cons
 
 ### ✅ Pros
 
-1.  **Clean Interface**: Eliminates the default Syncthing console window without requiring reinstallation, preventing workspace distraction.
-2.  **Convenient Operation**: Quickly show/hide the console or exit the program without needing to open a browser to access the GUI.
-3.  **Zero Intrusiveness**: Does not modify Syncthing's core binary files; operates solely as an external wrapper.
-4.  **Minimal Resource Usage**: Consumes negligible memory and CPU to maintain the tray icon and monitor window handles.
-5.  **Easy Configuration**: Supports custom Syncthing paths, catering to users with non-standard installations.
+1.  **Clean Interface**: Eliminates the persistent console window without modifying the original binary.
+2.  **Non-Intrusive**: Operates as an external wrapper; does not inject code into Syncthing.
+3.  **Safe Termination**: Prioritizes graceful shutdown signals to minimize data corruption risks.
+4.  **Minimal Resource Usage**: Lightweight footprint, consuming negligible memory and CPU.
 
 ### ❌ Cons
 
-1.  **Platform Limitation**: Supports **Windows** only (due to Win32 API dependency); incompatible with macOS or Linux.
-2.  **Dependencies**: Requires a Python environment and third-party libraries (`pystray`, `Pillow`), which is less convenient than a standalone executable unless compiled.
-3.  **Title Matching Mechanism**: The program locates the Syncthing window based on its title (`PART_OF_TITLE`). If a Syncthing update significantly changes the window title format, manual adjustment of the configuration file may be required.
-4.  **Process Lifecycle**: If this utility crashes unexpectedly, the Syncthing window may reappear (although the process continues running), requiring manual intervention or a script restart.
-
-## 🛠️ Compile to Standalone Executable (.exe)
-
-If you wish to use this on computers without Python installed, or if you want to **completely hide the console window during runtime**, it is recommended to compile using `PyInstaller`.
-
-### 1. Install PyInstaller
-
-```bash
-pip install pyinstaller
-```
-
-### 2. Compilation Command (Critical Step)
-
-To **hide the console**, you must use the `--noconsole` (or `--windowed`) flag. Additionally, to ensure the tray icon and dependencies work correctly, it is advisable to include `--onefile`.
-
-```bash
-pyinstaller --noconsole --onefile main.py
-```
-
-**Parameter Explanation:**
-- `--noconsole`: **Critical parameter**. Instructs PyInstaller not to spawn a black command-line window. The program will run in the background, displaying only the system tray icon.
-- `--onefile`: Packages all dependencies into a single `.exe` file for easy distribution.
-- `--name`: Specifies the name of the generated executable.
-
-### 3. Retrieve Output
-
-After compilation, locate `main.exe` in the `dist` folder. You can rename this file and place it in the same directory as `syncthing.exe` to run directly.
+1.  **Windows Only**: Incompatible with macOS or Linux due to Win32 API dependencies.
+2.  **Title Dependency**: Relies on window titles for detection. If the target application significantly changes its window title format in updates, manual configuration adjustment may be required.
+3.  **Process State**: If this utility crashes unexpectedly, the hidden window may reappear, though the underlying process will continue running.
 
 ## 📂 File Structure
 
 ```text
 .
-├── main.exe              # Main program script
-├── requirements.txt     # List of Python dependencies
-├── config.json          # (Auto-generated) Config file; editable for EXE path
-├── latest_log.log       # (Auto-generated) Runtime logs
-├── error.log            # (Auto-generated) Error logs
-└── syncthing.exe        # (User-provided) Syncthing main program
+├── main.py              # Main source code
+├── requirements.txt     # Python dependencies
+├── config.json          # (Auto-generated) User configuration
+├── log.log              # (Auto-generated) Runtime logs
+├── error.log            # (Auto-generated) Error logs (if any)
+└── syncthing.exe        # (User-provided) The target application
 ```
 
 ## 🔧 Configuration (`config.json`)
 
-If the default settings do not meet your needs, you can edit `config.json`:
+You can edit `config.json` to customize behavior:
 
 ```json
 {
     "EXE_FILE_NAME": ".\\syncthing.exe",
-    "PART_OF_TITLE": ""
+    "PART_OF_TITLE": "",
+    "FORCE_EXIT": false
 }
 ```
 
-- `EXE_FILE_NAME`: Relative or absolute path to the Syncthing executable.
-- `PART_OF_TITLE`: Keyword used to match the window title. If left empty, it defaults to matching the filename of `EXE_FILE_NAME` (e.g., `syncthing.exe`). If your Syncthing window title has been customized, enter part of that title text here.
+| Key | Description |
+| :--- | :--- |
+| `EXE_FILE_NAME` | Relative or absolute path to the target executable. |
+| `PART_OF_TITLE` | Keyword used to match the window title. If empty, defaults to the basename of `EXE_FILE_NAME` (e.g., `syncthing.exe`). Use this if the window title differs from the filename. |
+| `FORCE_EXIT` | If `true`, the tool will forcefully kill the process if it doesn't close gracefully within a timeout. Default is `false`. |
 
 ## 📝 Notes
 
-- The tool includes the Syncthing icon embedded within the code (encoded in Base85), so no extra icon files need to be downloaded.
-- When exiting, this tool attempts to terminate the Syncthing process, which may cause temporarily unsynced data to remain locked.
+- **Icon Embedding**: The tray icon is embedded directly in the source code (Base85 encoded PNG), so no external image files are required.
+- **Logging**: Detailed runtime logs are saved to `log.log`. Check `error.log` if the application fails to start.
+- **Data Safety**: When exiting, the tool attempts to send a close signal to the target application. Ensure your data is synced before forcing an exit if `FORCE_EXIT` is enabled.
 
 ## 📄 License
 
-The code for this project is open source under an MIT license.
+This project is open source under the [MIT License](LICENSE).
 
 ---
 
