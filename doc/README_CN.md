@@ -1,4 +1,4 @@
-# Syncthing Hide Console (隐藏控制台)
+# Syncthing Hide Console
 
 [English](./README.md)
 
