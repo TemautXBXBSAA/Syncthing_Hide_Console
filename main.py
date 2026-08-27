@@ -16,11 +16,16 @@ from hide_windows import HideApp
 
 DEFAULT_CONFIG = {"EXE_FILE_NAME": "syncthing.exe",}
 
-ICON = """32,32 c-qaE(GkEP2t&Jz`_D)xP!f`O_RhZ^4=@N+)mOk-YZY?}wCm=&
-{7|`yAB~;kr}{AEqJFS!(l+$(lug_<?Ze52pt-G$G#kl9$2Zm8
-)`xWLtbT9Aj@D0#jqp>NyTNbt9_4p=PVkvKX5Vjj4^-_MdS9EH
-G<(8V`V6D32^(Q_ebDs=vUTt7zpOT#Gl0T&%wMd2-Sejsdt&~c
-upRq{%6?)0dSU;(wSWJBg=!="""
+ICON ="""64,64 c-rlo(GA2f2t&I|_n+}P!Kp1^Y*QlL-$~(_grotE13S+1{AGTJ
+;m9&OYJp-_*P@$SNe4DNO9K^dh7PLi9U4S!iVhVGI+-iAV6dY{
+w+2<*)jD?YSJ;}3XDkgewxMEsW<GcJP7NY9bf5DP8>X<MG>FW}
+zVAiiW0mh!?!0d`_zL?Q4VK@Jy^8<M9BSXYnQsPn-+!6E;+xTR
+?RUJPsQUhnwNe8&_G;Um@41usBl~*_e>ApD;LpT$cmC{|=ERRU
+%U$?U_n1liEZdPbq3^IAwsz&cRQbC`H~%DdHa|PgJjn-S`I-5Q
+jPL)w|1j85dpE+5JeScLL~~&i_#?i*djnO;b65Z0A^#J7?}+As
+)iijz|EhA}N^io*`-VgP1B&0F287A3Q2)eO_evVD+1d4vtaYza
+|60jEt^T>w_e%Be4BxZ+A5^%v|7H81w*PJWAGiN?`=6)vzh8H;
+_!|"""
 logger = Logger(__name__,"log.log")
 def main():
     logger.clean_log()
