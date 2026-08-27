@@ -1,0 +1,199 @@
+import logging
+import typing
+import os,sys
+import functools
+
+from logging import DEBUG, INFO, WARNING, ERROR, CRITICAL
+__all__ = [
+    "Logger",
+    "WARNING","ERROR","CRITICAL","INFO","DEBUG",
+    "add_auto_log",
+]
+
+class _SysExcInfoFormatter(logging.Formatter):
+    def formatException(self, ei) -> str:
+        tb_str = super().formatException(ei)
+
+        border = "=" * 60
+        formatted = f"{border}\n{tb_str}\n{border}"
+        
+        return formatted
+
+class _ColorFormatter(logging.Formatter):
+    COLOR = {
+        'DEBUG': '\033[0m',
+        'INFO': '\033[0;32m',
+        'WARNING': '\033[1;33m',
+        'ERROR': '\033[1;31m',
+        'CRITICAL': '\033[1;35m'
+    }
+    END = '\033[0m'
+    
+    def format(self, record):
+        super().format(record)
+        astime = self.formatTime(record,"%Y-%m-%d %H:%M:%S")
+        msg = f"{self.COLOR[record.levelname]}{astime} | {record.levelname:<8} | {record.name}:{record.lineno} -> {record.message}{self.END}"
+        if record.exc_info:
+            error=self.formatException(record.exc_info)
+            msg = msg + '\n\n' + error + '\n'
+        return msg
+    
+    def formatException(self, ei) -> str:
+        color = self.COLOR["ERROR"]
+        tb_str = super().formatException(ei)
+        border = "=" * 60
+        formatted = f"{color}{border}\n{tb_str}\n{border}{self.END}"
+        
+        return formatted
+
+class Logger:
+    '''
+    Logger:
+        Basced on logging module. Improved by color and exc_info.
+        For a symple start, just use `logger = Logger()` to create a logger, and use `logger.info("message")` to log.
+        You can remove defuault log handler by using `self.removeHandler(self.file_handler or self.stream_handler)` and using `self.addHandler(handler)` to use your own handler.
+        If you want to DIY your own Logger, use self.logger.function to modify log style.
+
+    Remember:
+        If you want to use your own handler:
+          Firstly, using `self.removeHandler(self.file_handler or self.stream_handler)` to remove the default handler.
+          Secondly, using `self.addHandler(handler)` to add your own handler.
+    '''
+    def __init__(self,logger_name = __name__,save_path = "", encoding = "utf-8", mode = "a"):
+        self.encoding = encoding
+        self.logger = logging.getLogger(logger_name)
+        if self.logger.handlers:
+            return
+        self.logger.setLevel(logging.INFO)
+
+        if save_path != "":
+            if not os.path.exists(os.path.dirname(os.path.abspath(save_path))): 
+                os.makedirs(os.path.dirname(os.path.abspath(save_path)))
+        
+            self.file_handler = logging.FileHandler(save_path,encoding=self.encoding,mode=mode)
+            self.file_format = _SysExcInfoFormatter(
+                fmt='%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d -> %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S')
+
+            self.file_handler.setFormatter(self.file_format)
+            self.logger.addHandler(self.file_handler)
+
+        self.stream_handler = logging.StreamHandler()
+        if sys.stderr is not None and sys.stderr.isatty():
+            self.stream_format = _ColorFormatter()
+        else:
+            self.stream_format = logging.Formatter(
+                fmt='%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d -> %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S')
+        self.stream_handler.setFormatter(self.stream_format)
+        self.logger.addHandler(self.stream_handler)
+    
+    def set_log_path(self,save_path,encoding = "utf-8",mode = "a"):
+        '''
+        set_log_path:
+            Set log path for logger. if empty, FileHandler will be removed.
+        :param save_path: Log path.
+        '''
+        self.encoding = encoding
+        if save_path:
+            if not os.path.exists(os.path.dirname(os.path.abspath(save_path))): 
+                #I think it's bettter to not use try...except. Just let developer know what's wrong.
+                os.makedirs(os.path.dirname(os.path.abspath(save_path)))
+
+            if hasattr(self, 'file_handler') and self.file_handler in self.logger.handlers:
+                self.logger.removeHandler(self.file_handler)
+                self.file_handler.close()
+
+            self.file_handler = logging.FileHandler(save_path,encoding=self.encoding,mode=mode)
+            self.file_format = _SysExcInfoFormatter(
+                fmt='%(asctime)s | %(levelname)-8s | %(name)s:%(lineno)d -> %(message)s',
+                datefmt='%Y-%m-%d %H:%M:%S')
+            self.file_handler.setFormatter(self.file_format)
+            self.logger.addHandler(self.file_handler)
+        else:
+            if hasattr(self, 'file_handler') and self.file_handler in self.logger.handlers:
+                self.logger.removeHandler(self.file_handler)
+                self.file_handler.close()
+            else:
+                print("[-] FileHandler is not exist.")
+    def clean_log(self, keep_lines: int = 0):
+        '''
+        clean_log:
+            Clean the log file by keeping only the last 'keep_lines' lines.
+            If keep_lines is 0 or negative, the log file will be cleared.
+            This only affects the file handler if it exists.
+        :param keep_lines: Number of lines to keep from the end of the log file.
+        '''
+        if not hasattr(self, 'file_handler') or self.file_handler is None:
+            print("[-] No file handler configured. Cannot clean log file.")
+            return
+        log_path = self.file_handler.baseFilename
+        
+        if not os.path.exists(log_path):
+            print(f"[-] Log file does not exist: {log_path}")
+            return
+        try:
+            with open(log_path, 'r', encoding=self.encoding) as f:
+                lines = f.readlines()
+            
+            total_lines = len(lines)
+            if keep_lines <= 0:
+                lines_to_keep = []
+            elif keep_lines >= total_lines:
+                return
+            else:
+                lines_to_keep = lines[-keep_lines:]
+            with open(log_path, 'w', encoding=self.encoding) as f:
+                f.writelines(lines_to_keep)
+        except Exception as e:
+            print(f"[-] Error cleaning log file: {e}")
+    def addHandler(self,handler):
+        self.logger.addHandler(handler)
+    def removeHandler(self,handler):
+        self.logger.removeHandler(handler)
+    def addFilter(self,filter_):
+        self.logger.addFilter(filter_)
+    def removeFilter(self,filter_):
+        self.logger.removeFilter(filter_)
+    def setLevel(self,level):
+        self.logger.setLevel(level)
+    def info(self, msg, *args, **kwargs):
+        self.logger.info(msg, *args, **kwargs)
+    def debug(self, msg, *args, **kwargs):
+        self.logger.debug(msg, *args, **kwargs)
+    def warning(self, msg, *args, **kwargs):
+        self.logger.warning(msg, *args, **kwargs)
+    def error(self, msg, *args, **kwargs):
+        self.logger.error(msg, *args, **kwargs)
+    def critical(self, msg, *args, **kwargs):
+        self.logger.critical(msg, *args, **kwargs)
+    def log(self,level,msg, *args, **kwargs):
+        self.logger.log(level,msg, *args, **kwargs)
+    def exception(self, msg, *args, **kwargs):
+        '''Convenience method for logging an ERROR with exception information.'''
+        self.logger.exception(msg, *args, **kwargs)
+    def isEnabledFor(self,level):
+        """Is this logger enabled for level 'level'?"""
+        return self.logger.isEnabledFor(level)
+
+auto_logger = Logger()
+def add_auto_log(func:typing.Callable):
+    '''
+    add_auto_log: 
+        This is a decorator, will add log for function automatically.
+        The Logger is auto created in the module, name `model.auto_logger`, defult log level is `logging.WARNING`.
+        If you want to change log leavel, before using this decorator, use `modle.auto_logger.setLevel(level)` to change log level.
+        If you want to add/change log path, before using this decorator, use `modle.auto_logger.set_log_path(path)` to change log path.
+        But if you want to use your own logger, you can use `modle.auto_logger = YourOwnLogger` to overwrite the auto logger.
+    '''
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        auto_logger.info(f"'{func.__name__}' is called.")
+        try:
+            result = func(*args, **kwargs)
+            auto_logger.info(f"'{func.__name__}' is done.")
+        except Exception as e:
+            auto_logger.exception(f"'{func.__name__}': An error occurred.")
+            raise
+        return result
+    return wrapper
