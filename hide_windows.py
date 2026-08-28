@@ -25,10 +25,10 @@ class HideApp:
         self.monitor_thread = None
 
         self.app = TrayApp(Icon,name)
-        self.app.add_menu("Show Windows",self.show_window)
+        self.app.add_menu("Show Windows",self.show_window,default=(web_url == ""))
         self.app.add_menu("Hide Windows",self.hide_window)
         if web_url:
-            self.app.add_menu("Open Web",self.open_web)
+            self.app.add_menu("Open Web",self.open_web,default=(web_url != ""))
         self.app.add_exit(self.exit)
 
         self.app.start()
