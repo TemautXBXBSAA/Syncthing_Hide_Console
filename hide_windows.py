@@ -14,7 +14,7 @@ from PIL.Image import Image
 set_dpi_awareness()
 logger = Logger("HideApp","log.log")
 class HideApp:
-    def __init__(self,Icon:Image,cmd:str,name = "HideApp",web_url:str = ""):
+    def __init__(self,Icon:Image,cmd:list,name = "HideApp",web_url:str = ""):
         self.process = None
         self.pid = None
         self.hwnds = None
@@ -40,7 +40,7 @@ class HideApp:
     def start(self):
         self.running = True
         self.process = subprocess.Popen(
-            self.cmd.strip().split(" "),
+            self.cmd,
             shell=True,
             creationflags=subprocess.CREATE_NEW_CONSOLE,
 )
@@ -72,7 +72,7 @@ class HideApp:
             if poll_result is not None:
                 logger.info(f"Process has ended with return code: {poll_result}")
                 self.running = False
-                self.app.exit()
+                self.app.icon.stop()
                 return
             time.sleep(0.5)
     def exit(self):
